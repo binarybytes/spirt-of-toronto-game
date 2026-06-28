@@ -2,7 +2,7 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // =====================
-// FORCE CANVAS SIZE (CRITICAL FIX)
+// FORCE CANVAS SIZE (prevents black screen bugs)
 // =====================
 canvas.width = 800;
 canvas.height = 600;
@@ -30,20 +30,10 @@ let spiritReady = false;
 let holidayReady = false;
 let stitchReady = false;
 
-// =====================
-// SAFE LOAD LOGGING
-// =====================
 bgImg.onload = () => bgReady = true;
-bgImg.onerror = () => console.log("BG FAILED");
-
 spiritImg.onload = () => spiritReady = true;
-spiritImg.onerror = () => console.log("SPIRIT FAILED");
-
 holidayImg.onload = () => holidayReady = true;
-holidayImg.onerror = () => console.log("HOLIDAY FAILED");
-
 stitchImg.onload = () => stitchReady = true;
-stitchImg.onerror = () => console.log("STITCH FAILED");
 
 // =====================
 // WORLD
@@ -81,7 +71,7 @@ document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
 // =====================
-// SPRITE SETTINGS (ALL 4x5)
+// SPRITE SETTINGS
 // =====================
 const COLS = 4;
 const ROWS = 5;
@@ -100,7 +90,7 @@ const player = {
 };
 
 // =====================
-// HOLIDAY
+// HOLIDAY (FIXED)
 // =====================
 const holiday = {
   x: 300,
@@ -111,7 +101,7 @@ const holiday = {
 };
 
 // =====================
-// STITCH
+// STITCH (FIXED)
 // =====================
 const stitch = {
   x: 500,
@@ -162,9 +152,11 @@ function updatePlayer() {
 }
 
 // =====================
-// HOLIDAY FOLLOW (SAFE)
+// HOLIDAY (RESTORED SAFE FOLLOW AI)
 // =====================
 function updateHoliday() {
+  if (!holidayReady) return;
+
   const dx = player.x - holiday.x;
   const dy = player.y - holiday.y;
   const d = Math.sqrt(dx * dx + dy * dy);
@@ -173,6 +165,10 @@ function updateHoliday() {
     holiday.x += (dx / d) * 2;
     holiday.y += (dy / d) * 2;
   }
+
+  // clamp so she NEVER disappears
+  holiday.x = Math.max(0, Math.min(world.width, holiday.x));
+  holiday.y = Math.max(0, Math.min(world.height, holiday.y));
 
   holiday.tick++;
   if (holiday.tick % 12 === 0) {
@@ -185,9 +181,11 @@ function updateHoliday() {
 }
 
 // =====================
-// STITCH UPDATE (SAFE)
+// STITCH (SAFE ANIMATION)
 // =====================
 function updateStitch() {
+  if (!stitchReady) return;
+
   stitch.tick++;
 
   if (stitch.tick % 12 === 0) {
@@ -224,7 +222,7 @@ function updateAnimation() {
 }
 
 // =====================
-// BACKGROUND (FAILSAFE)
+// BACKGROUND (SAFE + ALWAYS VISIBLE)
 // =====================
 function drawBackground() {
   ctx.fillStyle = "#0b0b0b";
@@ -294,19 +292,6 @@ function drawStitch() {
 }
 
 // =====================
-// DEBUG OVERLAY (IMPORTANT)
-// =====================
-function drawDebug() {
-  ctx.fillStyle = "white";
-  ctx.font = "12px Arial";
-
-  ctx.fillText("BG: " + bgReady, 10, 20);
-  ctx.fillText("Spirit: " + spiritReady, 10, 40);
-  ctx.fillText("Holiday: " + holidayReady, 10, 60);
-  ctx.fillText("Stitch: " + stitchReady, 10, 80);
-}
-
-// =====================
 // LOOP
 // =====================
 function loop() {
@@ -321,7 +306,6 @@ function loop() {
   drawStitch();
   drawHoliday();
   drawPlayer();
-  drawDebug();
 
   requestAnimationFrame(loop);
 }
