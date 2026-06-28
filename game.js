@@ -19,25 +19,8 @@ holidayImg.src = "assets/holiday.png";
 const stitchImg = new Image();
 stitchImg.src = "assets/stitch.png";
 
-// TRASH SHEET
 const tsprites = new Image();
 tsprites.src = "assets/tsprites.png";
-
-// =====================
-// LOAD FLAGS (IMPORTANT FIX)
-// =====================
-let assetsReady = 0;
-const totalAssets = 5;
-
-function markLoaded() {
-  assetsReady++;
-}
-
-bgImg.onload = markLoaded;
-spiritImg.onload = markLoaded;
-holidayImg.onload = markLoaded;
-stitchImg.onload = markLoaded;
-tsprites.onload = markLoaded;
 
 // =====================
 // WORLD
@@ -71,8 +54,26 @@ const camera = { x: 0, y: 0 };
 // INPUT
 // =====================
 const keys = {};
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup", e => keys[e.key] = false);
+
+document.addEventListener("keydown", (e) => {
+  keys[e.key] = true;
+
+  if (e.code === "Space") cleaning = true;
+});
+
+document.addEventListener("keyup", (e) => {
+  keys[e.key] = false;
+
+  if (e.code === "Space") {
+    cleaning = false;
+
+    if (cleanCharge > 40) {
+      burstClean();
+    }
+
+    cleanCharge = 0;
+  }
+});
 
 // =====================
 // SPRITES
@@ -94,13 +95,13 @@ const player = {
 };
 
 // =====================
-// NPCs
+// NPCS
 // =====================
 const holiday = { x: 300, y: 300, frame: 0, tick: 0, dir: 0 };
 const stitch = { x: 500, y: 200, frame: 0, tick: 0, dir: 0 };
 
 // =====================
-// TRASH (SAFE)
+// TRASH
 // =====================
 const trash = [
   { x: 250, y: 250, cleaned: false, frame: 0, tick: 0 },
@@ -111,7 +112,13 @@ const trash = [
 let score = 0;
 
 // =====================
-// MOVEMENT (UNCHANGED)
+// CLEAN SYSTEM
+// =====================
+let cleaning = false;
+let cleanCharge = 0;
+
+// =====================
+// PLAYER MOVEMENT
 // =====================
 function updatePlayer() {
   player.moving = false;
@@ -123,7 +130,7 @@ function updatePlayer() {
 }
 
 // =====================
-// FOLLOWERS
+// FOLLOW SYSTEM
 // =====================
 function follow(obj, speed) {
   const dx = player.x - obj.x;
@@ -148,23 +155,40 @@ function updateCamera() {
 }
 
 // =====================
-// TRASH UPDATE (SAFE)
+// TRASH UPDATE
 // =====================
 function updateTrash() {
   trash.forEach(t => {
     if (t.cleaned) return;
+
     t.tick++;
-    if (t.tick % 20 === 0) {
+    if (t.tick % 18 === 0) {
       t.frame = (t.frame + 1) % 80;
     }
   });
 }
 
 // =====================
-// DRAW SPRITE (UNCHANGED)
+// BURST CLEAN (SPACE RELEASE)
+// =====================
+function burstClean() {
+  trash.forEach(t => {
+    if (t.cleaned) return;
+
+    const dist = Math.hypot(player.x - t.x, player.y - t.y);
+
+    if (dist < 120) {
+      t.cleaned = true;
+      score++;
+    }
+  });
+}
+
+// =====================
+// DRAW SPRITE (SAFE)
 // =====================
 function drawSprite(img, obj) {
-  if (!img.complete || img.width === 0) return;
+  if (!img || !img.complete || img.width === 0) return;
 
   const fw = img.width / COLS;
   const fh = img.height / ROWS;
@@ -183,10 +207,10 @@ function drawSprite(img, obj) {
 }
 
 // =====================
-// TRASH DRAW (SAFE GUARDED)
+// TRASH DRAW (8x10 SAFE)
 // =====================
 function drawTrash() {
-  if (!tsprites.complete || tsprites.width === 0) return;
+  if (!tsprites || !tsprites.complete || tsprites.width === 0) return;
 
   const cols = 8;
   const rows = 10;
@@ -204,7 +228,10 @@ function drawTrash() {
 
     ctx.drawImage(
       tsprites,
-      fx, fy, fw, fh,
+      fx,
+      fy,
+      fw,
+      fh,
       t.x - camera.x,
       t.y - camera.y,
       48,
@@ -218,6 +245,7 @@ function drawTrash() {
 // =====================
 function drawBackground() {
   if (!bgImg.complete) return;
+
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 }
 
@@ -228,8 +256,14 @@ function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   updatePlayer();
+  follow(holiday, 2);
+  follow(stitch, 1.5);
+
   updateTrash();
   updateCamera();
+
+  if (cleaning) cleanCharge += 1.5;
+  else cleanCharge *= 0.9;
 
   drawBackground();
 
@@ -238,6 +272,16 @@ function loop() {
   drawSprite(stitchImg, stitch);
   drawSprite(holidayImg, holiday);
   drawSprite(spiritImg, player);
+
+  ctx.fillStyle = "white";
+  ctx.fillText("Score: " + score, 20, 40);
+
+  // clean bar
+  ctx.fillStyle = "rgba(255,255,255,0.2)";
+  ctx.fillRect(20, 20, 200, 10);
+
+  ctx.fillStyle = "cyan";
+  ctx.fillRect(20, 20, Math.min(200, cleanCharge * 2), 10);
 
   requestAnimationFrame(loop);
 }
