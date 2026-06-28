@@ -1,9 +1,6 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// =====================
-// CANVAS SIZE
-// =====================
 canvas.width = 800;
 canvas.height = 600;
 
@@ -17,20 +14,30 @@ const spiritImg = new Image();
 spiritImg.src = "assets/spirit.png";
 
 const holidayImg = new Image();
-spiritImg.src = "assets/holiday.png";
+holidayImg.src = "assets/holiday.png";
 
 const stitchImg = new Image();
 stitchImg.src = "assets/stitch.png";
 
-// NEW TRASH SHEET (8x10)
+// TRASH SHEET
 const tsprites = new Image();
 tsprites.src = "assets/tsprites.png";
 
 // =====================
-// LOAD FLAGS
+// LOAD FLAGS (IMPORTANT FIX)
 // =====================
-let bgReady = false;
-bgImg.onload = () => bgReady = true;
+let assetsReady = 0;
+const totalAssets = 5;
+
+function markLoaded() {
+  assetsReady++;
+}
+
+bgImg.onload = markLoaded;
+spiritImg.onload = markLoaded;
+holidayImg.onload = markLoaded;
+stitchImg.onload = markLoaded;
+tsprites.onload = markLoaded;
 
 // =====================
 // WORLD
@@ -64,25 +71,11 @@ const camera = { x: 0, y: 0 };
 // INPUT
 // =====================
 const keys = {};
-
-document.addEventListener("keydown", (e) => {
-  keys[e.key] = true;
-
-  if (e.code === "Space") {
-    startClean();
-  }
-});
-
-document.addEventListener("keyup", (e) => {
-  keys[e.key] = false;
-
-  if (e.code === "Space") {
-    stopClean();
-  }
-});
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
 
 // =====================
-// SPRITE SETTINGS (YOUR ENGINE)
+// SPRITES
 // =====================
 const COLS = 4;
 const ROWS = 5;
@@ -101,26 +94,13 @@ const player = {
 };
 
 // =====================
-// NPCS
+// NPCs
 // =====================
-const holiday = {
-  x: 300,
-  y: 300,
-  frame: 0,
-  tick: 0,
-  dir: 0
-};
-
-const stitch = {
-  x: 500,
-  y: 200,
-  frame: 0,
-  tick: 0,
-  dir: 0
-};
+const holiday = { x: 300, y: 300, frame: 0, tick: 0, dir: 0 };
+const stitch = { x: 500, y: 200, frame: 0, tick: 0, dir: 0 };
 
 // =====================
-// TRASH SYSTEM
+// TRASH (SAFE)
 // =====================
 const trash = [
   { x: 250, y: 250, cleaned: false, frame: 0, tick: 0 },
@@ -130,38 +110,20 @@ const trash = [
 
 let score = 0;
 
-// CLEAN STATE
-let cleaning = false;
-let cleanProgress = 0;
-let targetTrash = null;
-
 // =====================
 // MOVEMENT (UNCHANGED)
 // =====================
 function updatePlayer() {
   player.moving = false;
 
-  if (keys["ArrowUp"]) {
-    player.y -= player.speed;
-    player.dir = 1;
-    player.moving = true;
-  } else if (keys["ArrowDown"]) {
-    player.y += player.speed;
-    player.dir = 0;
-    player.moving = true;
-  } else if (keys["ArrowLeft"]) {
-    player.x -= player.speed;
-    player.dir = 2;
-    player.moving = true;
-  } else if (keys["ArrowRight"]) {
-    player.x += player.speed;
-    player.dir = 3;
-    player.moving = true;
-  }
+  if (keys["ArrowUp"]) { player.y -= player.speed; player.dir = 1; player.moving = true; }
+  else if (keys["ArrowDown"]) { player.y += player.speed; player.dir = 0; player.moving = true; }
+  else if (keys["ArrowLeft"]) { player.x -= player.speed; player.dir = 2; player.moving = true; }
+  else if (keys["ArrowRight"]) { player.x += player.speed; player.dir = 3; player.moving = true; }
 }
 
 // =====================
-// FOLLOW SYSTEM
+// FOLLOWERS
 // =====================
 function follow(obj, speed) {
   const dx = player.x - obj.x;
@@ -172,11 +134,6 @@ function follow(obj, speed) {
     obj.x += (dx / d) * speed;
     obj.y += (dy / d) * speed;
   }
-}
-
-function updateFollowers() {
-  follow(holiday, 2);
-  follow(stitch, 1.5);
 }
 
 // =====================
@@ -191,61 +148,24 @@ function updateCamera() {
 }
 
 // =====================
-// TRASH ANIMATION (8x10 SAFE)
+// TRASH UPDATE (SAFE)
 // =====================
 function updateTrash() {
   trash.forEach(t => {
     if (t.cleaned) return;
-
     t.tick++;
-    if (t.tick % 15 === 0) {
-      t.frame = (t.frame + 1) % 80; // 8x10 = 80 frames
+    if (t.tick % 20 === 0) {
+      t.frame = (t.frame + 1) % 80;
     }
   });
 }
 
 // =====================
-// CLEAN SYSTEM
-// =====================
-function startClean() {
-  if (cleaning) return;
-
-  targetTrash = trash.find(t => {
-    if (t.cleaned) return false;
-    return Math.hypot(player.x - t.x, player.y - t.y) < 50;
-  });
-
-  if (targetTrash) {
-    cleaning = true;
-    cleanProgress = 0;
-  }
-}
-
-function stopClean() {
-  cleaning = false;
-  cleanProgress = 0;
-  targetTrash = null;
-}
-
-function updateClean() {
-  if (!cleaning || !targetTrash) return;
-
-  cleanProgress += 2;
-
-  if (cleanProgress >= 100) {
-    targetTrash.cleaned = true;
-    score++;
-
-    cleaning = false;
-    cleanProgress = 0;
-    targetTrash = null;
-  }
-}
-
-// =====================
-// YOUR ORIGINAL SPRITE ENGINE (UNCHANGED)
+// DRAW SPRITE (UNCHANGED)
 // =====================
 function drawSprite(img, obj) {
+  if (!img.complete || img.width === 0) return;
+
   const fw = img.width / COLS;
   const fh = img.height / ROWS;
 
@@ -263,10 +183,10 @@ function drawSprite(img, obj) {
 }
 
 // =====================
-// TRASH DRAW (FIXED FOR 8x10)
+// TRASH DRAW (SAFE GUARDED)
 // =====================
 function drawTrash() {
-  if (!tsprites.complete) return;
+  if (!tsprites.complete || tsprites.width === 0) return;
 
   const cols = 8;
   const rows = 10;
@@ -284,10 +204,7 @@ function drawTrash() {
 
     ctx.drawImage(
       tsprites,
-      fx,
-      fy,
-      fw,
-      fh,
+      fx, fy, fw, fh,
       t.x - camera.x,
       t.y - camera.y,
       48,
@@ -297,35 +214,11 @@ function drawTrash() {
 }
 
 // =====================
-// BACKGROUND + MAP
+// BACKGROUND
 // =====================
 function drawBackground() {
-  if (!bgReady) return;
-
-  ctx.drawImage(
-    bgImg,
-    -camera.x * 0.1,
-    -camera.y * 0.1,
-    canvas.width,
-    canvas.height
-  );
-}
-
-function drawMap() {
-  for (let r = 0; r < map.length; r++) {
-    for (let c = 0; c < map[r].length; c++) {
-      ctx.fillStyle = map[r][c] === 1
-        ? "rgba(80,80,80,0.6)"
-        : "rgba(20,20,20,0.4)";
-
-      ctx.fillRect(
-        c * TILE_SIZE - camera.x,
-        r * TILE_SIZE - camera.y,
-        TILE_SIZE,
-        TILE_SIZE
-      );
-    }
-  }
+  if (!bgImg.complete) return;
+  ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 }
 
 // =====================
@@ -335,22 +228,16 @@ function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   updatePlayer();
-  updateFollowers();
   updateTrash();
-  updateClean();
   updateCamera();
 
   drawBackground();
-  drawMap();
 
   drawTrash();
 
   drawSprite(stitchImg, stitch);
   drawSprite(holidayImg, holiday);
   drawSprite(spiritImg, player);
-
-  ctx.fillStyle = "white";
-  ctx.fillText("Score: " + score, 20, 40);
 
   requestAnimationFrame(loop);
 }
