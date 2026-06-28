@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Spirit of Toronto Game</title>
+<title>Spirit of Toronto</title>
 
 <style>
   body {
@@ -14,114 +14,17 @@
     height: 100vh;
   }
 
-  #game-container {
-    position: relative;
-    width: 1376px;
-    height: 768px;
-  }
-
   canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-
-  #ui {
-    position: absolute;
-    z-index: 10;
-    color: white;
-    font-family: Arial;
-    padding: 10px;
+    border: 2px solid #333;
   }
 </style>
 </head>
 
 <body>
 
-<div id="game-container">
-  <canvas id="game" width="1376" height="768"></canvas>
-  <div id="ui">Loading...</div>
-</div>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
 
-<script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const ui = document.getElementById("ui");
-
-// ===== BACKGROUND =====
-const background = new Image();
-background.src = "assets/background.png";
-
-let bgLoaded = false;
-
-background.onload = () => {
-  bgLoaded = true;
-  ui.innerText = "Game Ready";
-};
-
-background.onerror = () => {
-  console.log("❌ Background failed to load");
-  ui.innerText = "Background failed (check path)";
-};
-
-// ===== PLAYER =====
-const player = {
-  x: 200,
-  y: 400,
-  w: 50,
-  h: 50,
-  speed: 5
-};
-
-const playerImg = new Image();
-playerImg.src = "https://via.placeholder.com/50";
-
-// ===== INPUT =====
-const keys = {};
-
-window.addEventListener("keydown", (e) => keys[e.key] = true);
-window.addEventListener("keyup", (e) => keys[e.key] = false);
-
-// ===== UPDATE =====
-function update() {
-  if (keys["ArrowLeft"]) player.x -= player.speed;
-  if (keys["ArrowRight"]) player.x += player.speed;
-  if (keys["ArrowUp"]) player.y -= player.speed;
-  if (keys["ArrowDown"]) player.y += player.speed;
-}
-
-// ===== DRAW =====
-function draw() {
-  // background fallback
-  if (bgLoaded) {
-    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
-  } else {
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  // overlay
-  ctx.fillStyle = "rgba(0,0,0,0.15)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // player
-  ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
-
-  // UI text
-  ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
-  ctx.fillText("Arrow keys to move", 20, 30);
-}
-
-// ===== LOOP =====
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-loop();
-</script>
+<script src="game.js"></script>
 
 </body>
 </html>
