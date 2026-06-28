@@ -2,7 +2,7 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // =====================
-// FORCE CANVAS SIZE (prevents black screen bugs)
+// CANVAS SIZE (must stay explicit)
 // =====================
 canvas.width = 800;
 canvas.height = 600;
@@ -77,7 +77,7 @@ const COLS = 4;
 const ROWS = 5;
 
 // =====================
-// PLAYER (SPIRIT)
+// PLAYER
 // =====================
 const player = {
   x: 120,
@@ -90,7 +90,7 @@ const player = {
 };
 
 // =====================
-// HOLIDAY (FIXED)
+// HOLIDAY
 // =====================
 const holiday = {
   x: 300,
@@ -101,7 +101,7 @@ const holiday = {
 };
 
 // =====================
-// STITCH (FIXED)
+// STITCH
 // =====================
 const stitch = {
   x: 500,
@@ -152,11 +152,9 @@ function updatePlayer() {
 }
 
 // =====================
-// HOLIDAY (RESTORED SAFE FOLLOW AI)
+// HOLIDAY FOLLOW
 // =====================
 function updateHoliday() {
-  if (!holidayReady) return;
-
   const dx = player.x - holiday.x;
   const dy = player.y - holiday.y;
   const d = Math.sqrt(dx * dx + dy * dy);
@@ -165,10 +163,6 @@ function updateHoliday() {
     holiday.x += (dx / d) * 2;
     holiday.y += (dy / d) * 2;
   }
-
-  // clamp so she NEVER disappears
-  holiday.x = Math.max(0, Math.min(world.width, holiday.x));
-  holiday.y = Math.max(0, Math.min(world.height, holiday.y));
 
   holiday.tick++;
   if (holiday.tick % 12 === 0) {
@@ -181,11 +175,9 @@ function updateHoliday() {
 }
 
 // =====================
-// STITCH (SAFE ANIMATION)
+// STITCH ANIMATION
 // =====================
 function updateStitch() {
-  if (!stitchReady) return;
-
   stitch.tick++;
 
   if (stitch.tick % 12 === 0) {
@@ -222,31 +214,32 @@ function updateAnimation() {
 }
 
 // =====================
-// BACKGROUND (SAFE + ALWAYS VISIBLE)
+// BACKGROUND (NOW PROPERLY VISIBLE LAYER)
 // =====================
 function drawBackground() {
   if (!bgReady) return;
 
-  // scale so it actually becomes visible in gameplay world
   const scale = 6;
 
   const w = bgImg.width * scale;
   const h = bgImg.height * scale;
 
-  // world-space positioning (NOT screen-centered)
-  const x = -camera.x * 0.2 + (world.width / 2 - w / 2);
-  const y = -camera.y * 0.2 + (world.height / 2 - h / 2);
+  const x = (world.width - w) / 2 - camera.x * 0.1;
+  const y = (world.height - h) / 2 - camera.y * 0.1;
 
   ctx.drawImage(bgImg, x, y, w, h);
 }
 
 // =====================
-// MAP
+// MAP (FIXED TRANSPARENCY ISSUE)
 // =====================
 function drawMap() {
   for (let r = 0; r < map.length; r++) {
     for (let c = 0; c < map[r].length; c++) {
-      ctx.fillStyle = map[r][c] === 1 ? "#444" : "#1a1a1a";
+      ctx.fillStyle = map[r][c] === 1
+        ? "rgba(80,80,80,0.6)"
+        : "rgba(20,20,20,0.4)";
+
       ctx.fillRect(
         c * TILE_SIZE - camera.x,
         r * TILE_SIZE - camera.y,
@@ -258,11 +251,9 @@ function drawMap() {
 }
 
 // =====================
-// SPRITE DRAW SAFE
+// SPRITES
 // =====================
 function drawSprite(img, obj) {
-  if (!img || img.width === 0) return;
-
   const fw = img.width / COLS;
   const fh = img.height / ROWS;
 
@@ -279,9 +270,6 @@ function drawSprite(img, obj) {
   );
 }
 
-// =====================
-// DRAW ENTITIES
-// =====================
 function drawPlayer() {
   drawSprite(spiritImg, player);
 }
@@ -298,14 +286,16 @@ function drawStitch() {
 // LOOP
 // =====================
 function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   updatePlayer();
   updateHoliday();
   updateStitch();
   updateAnimation();
   updateCamera();
 
-  drawBackground();
-  drawMap();
+  drawBackground();   // now visible layer
+  drawMap();          // semi-transparent
   drawStitch();
   drawHoliday();
   drawPlayer();
