@@ -17,14 +17,14 @@ const spiritImg = new Image();
 spiritImg.src = "assets/spirit.png";
 
 const holidayImg = new Image();
-holidayImg.src = "assets/holiday.png";
+spiritImg.src = "assets/holiday.png";
 
 const stitchImg = new Image();
 stitchImg.src = "assets/stitch.png";
 
-// NEW: trash sprite sheet (safe addition)
-const trashImg = new Image();
-trashImg.src = "assets/trash.png";
+// NEW TRASH SHEET (8x10)
+const tsprites = new Image();
+tsprites.src = "assets/tsprites.png";
 
 // =====================
 // LOAD FLAGS
@@ -82,13 +82,13 @@ document.addEventListener("keyup", (e) => {
 });
 
 // =====================
-// SPRITES (YOUR ORIGINAL SYSTEM)
+// SPRITE SETTINGS (YOUR ENGINE)
 // =====================
 const COLS = 4;
 const ROWS = 5;
 
 // =====================
-// PLAYER (UNCHANGED)
+// PLAYER
 // =====================
 const player = {
   x: 120,
@@ -101,7 +101,7 @@ const player = {
 };
 
 // =====================
-// NPCs (UNCHANGED STYLE)
+// NPCS
 // =====================
 const holiday = {
   x: 300,
@@ -120,7 +120,7 @@ const stitch = {
 };
 
 // =====================
-// TRASH SYSTEM (ADDED ONLY)
+// TRASH SYSTEM
 // =====================
 const trash = [
   { x: 250, y: 250, cleaned: false, frame: 0, tick: 0 },
@@ -136,7 +136,7 @@ let cleanProgress = 0;
 let targetTrash = null;
 
 // =====================
-// ORIGINAL MOVEMENT LOGIC (UNCHANGED)
+// MOVEMENT (UNCHANGED)
 // =====================
 function updatePlayer() {
   player.moving = false;
@@ -161,7 +161,7 @@ function updatePlayer() {
 }
 
 // =====================
-// FOLLOW SYSTEM (UNCHANGED)
+// FOLLOW SYSTEM
 // =====================
 function follow(obj, speed) {
   const dx = player.x - obj.x;
@@ -180,7 +180,7 @@ function updateFollowers() {
 }
 
 // =====================
-// CAMERA (UNCHANGED STYLE)
+// CAMERA
 // =====================
 function updateCamera() {
   camera.x = player.x - canvas.width / 2;
@@ -191,14 +191,15 @@ function updateCamera() {
 }
 
 // =====================
-// TRASH ANIMATION (SAFE ADDITION)
+// TRASH ANIMATION (8x10 SAFE)
 // =====================
 function updateTrash() {
   trash.forEach(t => {
     if (t.cleaned) return;
+
     t.tick++;
     if (t.tick % 15 === 0) {
-      t.frame = (t.frame + 1) % 16;
+      t.frame = (t.frame + 1) % 80; // 8x10 = 80 frames
     }
   });
 }
@@ -242,7 +243,7 @@ function updateClean() {
 }
 
 // =====================
-// DRAW SPRITES (YOUR ORIGINAL SYSTEM — DO NOT TOUCH)
+// YOUR ORIGINAL SPRITE ENGINE (UNCHANGED)
 // =====================
 function drawSprite(img, obj) {
   const fw = img.width / COLS;
@@ -262,16 +263,16 @@ function drawSprite(img, obj) {
 }
 
 // =====================
-// TRASH DRAW (ADDED ONLY)
+// TRASH DRAW (FIXED FOR 8x10)
 // =====================
 function drawTrash() {
-  if (!trashImg.complete) return;
+  if (!tsprites.complete) return;
 
-  const cols = 4;
-  const rows = 4;
+  const cols = 8;
+  const rows = 10;
 
-  const fw = trashImg.naturalWidth / cols;
-  const fh = trashImg.naturalHeight / rows;
+  const fw = Math.floor(tsprites.width / cols);
+  const fh = Math.floor(tsprites.height / rows);
 
   trash.forEach(t => {
     if (t.cleaned) return;
@@ -282,8 +283,11 @@ function drawTrash() {
     const fy = Math.floor(frame / cols) * fh;
 
     ctx.drawImage(
-      trashImg,
-      fx, fy, fw, fh,
+      tsprites,
+      fx,
+      fy,
+      fw,
+      fh,
       t.x - camera.x,
       t.y - camera.y,
       48,
@@ -341,9 +345,9 @@ function loop() {
 
   drawTrash();
 
-  drawSprite(stitch, stitch);
-  drawSprite(holiday, holiday);
-  drawSprite(player, player);
+  drawSprite(stitchImg, stitch);
+  drawSprite(holidayImg, holiday);
+  drawSprite(spiritImg, player);
 
   ctx.fillStyle = "white";
   ctx.fillText("Score: " + score, 20, 40);
