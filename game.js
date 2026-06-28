@@ -13,14 +13,14 @@ canvas.height = 600;
 // ASSETS
 // =====================================================
 const assets = {
-  bg: loadImage("assets/background.png"),
-  spirit: loadImage("assets/spirit.png"),
-  holiday: loadImage("assets/holiday.png"),
-  stitch: loadImage("assets/stitch.png"),
-  trash: loadImage("assets/tsprites.png")
+  bg: load("assets/background.png"),
+  spirit: load("assets/spirit.png"),
+  holiday: load("assets/holiday.png"),
+  stitch: load("assets/stitch.png"),
+  trash: load("assets/tsprites.png")
 };
 
-function loadImage(src) {
+function load(src) {
   const img = new Image();
   img.src = src;
   return img;
@@ -43,14 +43,12 @@ const keys = Object.create(null);
 
 window.addEventListener("keydown", (e) => {
   keys[e.code] = true;
-
-  if (e.code === "Space") startBeam();
+  if (e.code === "Space") beamStart();
 });
 
 window.addEventListener("keyup", (e) => {
   keys[e.code] = false;
-
-  if (e.code === "Space") endBeam();
+  if (e.code === "Space") beamEnd();
 });
 
 // =====================================================
@@ -70,20 +68,22 @@ const player = createActor(120, 120);
 const holiday = createFollower(320, 260, 2);
 const stitch = createFollower(520, 180, 1.6);
 
+// STATIC TRASH (NO ANIMATION)
 const trash = [
   createTrash(260, 240),
   createTrash(520, 320),
   createTrash(740, 460),
-  createTrash(900, 300)
+  createTrash(900, 300),
+  createTrash(1100, 500)
 ];
 
-// =====================================================
-// GAME STATE
-// =====================================================
 let score = 0;
 
+// =====================================================
+// BEAM SYSTEM
+// =====================================================
 let beamActive = false;
-let beamEnergy = 0;
+let beamPower = 0;
 
 // =====================================================
 // FACTORIES
@@ -111,15 +111,15 @@ function createFollower(x, y, speed) {
 
 function createTrash(x, y) {
   return {
-    x, y,
-    frame: Math.floor(Math.random() * TRASH_FRAMES),
-    tick: 0,
+    x,
+    y,
+    frame: Math.floor(Math.random() * TRASH_FRAMES), // STATIC ONCE
     cleaned: false
   };
 }
 
 // =====================================================
-// UPDATE: PLAYER
+// PLAYER
 // =====================================================
 function updatePlayer() {
   player.moving = false;
@@ -144,7 +144,7 @@ function updatePlayer() {
 }
 
 // =====================================================
-// FOLLOW SYSTEM
+// FOLLOW AI
 // =====================================================
 function updateFollower(f) {
   const dx = player.x - f.x;
@@ -170,44 +170,35 @@ function clamp(v, min, max) {
 }
 
 // =====================================================
-// TRASH ANIMATION (CONTROLLED, NOT CHAOTIC)
+// TRASH (NO ANIMATION ANYMORE)
 // =====================================================
 function updateTrash() {
-  for (const t of trash) {
-    if (t.cleaned) continue;
-
-    t.tick++;
-
-    // slow subtle animation only
-    if (t.tick % 70 === 0) {
-      t.frame = (t.frame + 1) % TRASH_FRAMES;
-    }
-  }
+  // intentionally empty
 }
 
 // =====================================================
-// BEAM SYSTEM (SPACE ATTACK)
+// BEAM LOGIC
 // =====================================================
-function startBeam() {
+function beamStart() {
   beamActive = true;
 }
 
-function endBeam() {
+function beamEnd() {
   beamActive = false;
 
-  if (beamEnergy > 25) {
-    cleanBurst();
+  if (beamPower > 25) {
+    burstClean();
   }
 
-  beamEnergy = 0;
+  beamPower = 0;
 }
 
 function updateBeam() {
-  if (beamActive) beamEnergy += 2;
-  else beamEnergy *= 0.9;
+  if (beamActive) beamPower += 2;
+  else beamPower *= 0.9;
 }
 
-function cleanBurst() {
+function burstClean() {
   const radius = 150;
 
   for (const t of trash) {
@@ -223,10 +214,10 @@ function cleanBurst() {
 }
 
 // =====================================================
-// RENDER: SPRITES
+// SPRITE RENDER
 // =====================================================
 function drawSprite(img, e) {
-  if (!img.complete || img.width === 0) return;
+  if (!img || !img.complete || img.width === 0) return;
 
   const fw = img.width / SPRITE_COLS;
   const fh = img.height / SPRITE_ROWS;
@@ -245,12 +236,11 @@ function drawSprite(img, e) {
 }
 
 // =====================================================
-// RENDER: TRASH (FIXED GRID)
+// TRASH RENDER (FIXED STATIC SPRITESHEET USAGE)
 // =====================================================
 function drawTrash() {
   const img = assets.trash;
-
-  if (!img.complete || img.width === 0) return;
+  if (!img || !img.complete || img.width === 0) return;
 
   const fw = img.width / TRASH_COLS;
   const fh = img.height / TRASH_ROWS;
@@ -258,12 +248,15 @@ function drawTrash() {
   for (const t of trash) {
     if (t.cleaned) continue;
 
-    const fx = (t.frame % TRASH_COLS) * fw;
-    const fy = Math.floor(t.frame / TRASH_COLS) * fh;
+    const sx = (t.frame % TRASH_COLS) * fw;
+    const sy = Math.floor(t.frame / TRASH_COLS) * fh;
 
     ctx.drawImage(
       img,
-      fx, fy, fw, fh,
+      sx,
+      sy,
+      fw,
+      fh,
       t.x - camera.x,
       t.y - camera.y,
       48,
@@ -283,13 +276,13 @@ function drawBeam() {
 
   const r = 150;
 
-  const g = ctx.createRadialGradient(x, y, 10, x, y, r);
-  g.addColorStop(0, "rgba(255,0,255,0.6)");
-  g.addColorStop(0.3, "rgba(0,255,255,0.5)");
-  g.addColorStop(0.6, "rgba(255,255,0,0.3)");
-  g.addColorStop(1, "rgba(0,0,0,0)");
+  const grad = ctx.createRadialGradient(x, y, 10, x, y, r);
+  grad.addColorStop(0, "rgba(255,0,255,0.6)");
+  grad.addColorStop(0.3, "rgba(0,255,255,0.5)");
+  grad.addColorStop(0.6, "rgba(255,255,0,0.3)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
 
-  ctx.fillStyle = g;
+  ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
@@ -313,18 +306,15 @@ function loop() {
   updatePlayer();
   updateFollower(holiday);
   updateFollower(stitch);
-  updateTrash();
   updateBeam();
+  updateTrash();
   updateCamera();
 
-  // background
   ctx.drawImage(assets.bg, 0, 0, canvas.width, canvas.height);
 
-  // world
   drawTrash();
   drawBeam();
 
-  // characters
   drawSprite(assets.stitch, stitch);
   drawSprite(assets.holiday, holiday);
   drawSprite(assets.spirit, player);
