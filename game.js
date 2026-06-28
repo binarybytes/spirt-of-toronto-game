@@ -2,19 +2,27 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // --------------------
-// SPRITE SHEET
+// IMAGES
 // --------------------
+const bgImg = new Image();
+bgImg.src = "assets/background.png";
+
 const spiritImg = new Image();
 spiritImg.src = "assets/spirit.png";
 
 const holidayImg = new Image();
 holidayImg.src = "assets/holiday.png";
 
-let loadedSpirit = false;
-let loadedHoliday = false;
+const stitchImg = new Image();
+stitchImg.src = "assets/stitch.png";
+
+let bgLoaded = false;
+let spiritLoaded = false;
+let holidayLoaded = false;
+let stitchLoaded = false;
 
 // --------------------
-// WORLD / TILE SYSTEM
+// WORLD / TILE MAP
 // --------------------
 const TILE_SIZE = 40;
 
@@ -53,12 +61,17 @@ const player = {
 };
 
 // --------------------
-// HOLIDAY NPC
+// NPCs
 // --------------------
 const holiday = {
   x: 300,
   y: 300,
   speed: 2
+};
+
+const stitch = {
+  x: 500,
+  y: 200
 };
 
 // --------------------
@@ -69,7 +82,7 @@ document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
 // --------------------
-// SPRITE CONFIG
+// SPRITE SHEET
 // --------------------
 const COLS = 4;
 const ROWS = 5;
@@ -82,22 +95,22 @@ let tick = 0;
 const MAX_FRAMES = 4;
 
 // --------------------
-// LOAD SPRITES
+// LOAD HANDLERS
 // --------------------
+bgImg.onload = () => bgLoaded = true;
+
 spiritImg.onload = () => {
-  loadedSpirit = true;
+  spiritLoaded = true;
   FRAME_W = spiritImg.width / COLS;
   FRAME_H = spiritImg.height / ROWS;
-  maybeStart();
+  checkStart();
 };
 
-holidayImg.onload = () => {
-  loadedHoliday = true;
-  maybeStart();
-};
+holidayImg.onload = () => holidayLoaded = true;
+stitchImg.onload = () => stitchLoaded = true;
 
-function maybeStart() {
-  if (loadedSpirit && loadedHoliday) {
+function checkStart() {
+  if (spiritLoaded) {
     loop();
   }
 }
@@ -114,7 +127,7 @@ function isBlocked(x, y) {
 }
 
 // --------------------
-// UPDATE PLAYER
+// PLAYER UPDATE
 // --------------------
 function updatePlayer() {
   player.moving = false;
@@ -145,7 +158,7 @@ function updatePlayer() {
 }
 
 // --------------------
-// HOLIDAY AI (FOLLOW PLAYER)
+// HOLIDAY FOLLOW AI
 // --------------------
 function updateHoliday() {
   const dx = player.x - holiday.x;
@@ -157,6 +170,13 @@ function updateHoliday() {
     holiday.x += (dx / dist) * holiday.speed;
     holiday.y += (dy / dist) * holiday.speed;
   }
+}
+
+// --------------------
+// STITCH (IDLE NPC FOR NOW)
+// --------------------
+function updateStitch() {
+  stitch.x += Math.sin(Date.now() * 0.001) * 0.2;
 }
 
 // --------------------
@@ -186,7 +206,25 @@ function updateAnimation() {
 }
 
 // --------------------
-// DRAW MAP
+// BACKGROUND (SKYLINE)
+// --------------------
+function drawBackground() {
+  if (!bgLoaded) return;
+
+  const px = camera.x * 0.2;
+  const py = camera.y * 0.2;
+
+  ctx.drawImage(
+    bgImg,
+    -px,
+    -py,
+    world.width,
+    world.height
+  );
+}
+
+// --------------------
+// TILE MAP
 // --------------------
 function drawMap() {
   for (let r = 0; r < map.length; r++) {
@@ -206,6 +244,8 @@ function drawMap() {
 // DRAW PLAYER
 // --------------------
 function drawPlayer() {
+  if (!spiritLoaded) return;
+
   const col = frame;
   const row = player.moving ? player.dir : 4;
 
@@ -226,10 +266,27 @@ function drawPlayer() {
 // DRAW HOLIDAY
 // --------------------
 function drawHoliday() {
+  if (!holidayLoaded) return;
+
   ctx.drawImage(
     holidayImg,
     holiday.x - camera.x,
     holiday.y - camera.y,
+    40,
+    40
+  );
+}
+
+// --------------------
+// DRAW STITCH
+// --------------------
+function drawStitch() {
+  if (!stitchLoaded) return;
+
+  ctx.drawImage(
+    stitchImg,
+    stitch.x - camera.x,
+    stitch.y - camera.y,
     40,
     40
   );
@@ -243,10 +300,13 @@ function loop() {
 
   updatePlayer();
   updateHoliday();
+  updateStitch();
   updateAnimation();
   updateCamera();
 
+  drawBackground();
   drawMap();
+  drawStitch();
   drawHoliday();
   drawPlayer();
 
