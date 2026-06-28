@@ -25,7 +25,13 @@ const stitchImg = new Image();
 stitchImg.src = "assets/stitch.png";
 
 const trashImg = new Image();
-trashImg.src = "assets/trash.png"; // 4x4 sprite sheet
+trashImg.src = "assets/trash.png";
+
+// =====================
+// LOAD FLAGS
+// =====================
+let bgReady = false;
+bgImg.onload = () => bgReady = true;
 
 // =====================
 // WORLD
@@ -77,14 +83,16 @@ document.addEventListener("keyup", (e) => {
 });
 
 // =====================
-// PLAYER
+// PLAYER (UNCHANGED STYLE)
 // =====================
 const player = {
   x: 120,
   y: 120,
   speed: 4,
   moving: false,
-  dir: 0
+  dir: 0,
+  frame: 0,
+  tick: 0
 };
 
 // =====================
@@ -105,13 +113,15 @@ const trash = [
 
 let score = 0;
 
+// =====================
 // CLEAN SYSTEM
+// =====================
 let cleaning = false;
 let cleanProgress = 0;
 let targetTrash = null;
 
 // =====================
-// UPDATE PLAYER
+// PLAYER UPDATE
 // =====================
 function updatePlayer() {
   let nx = player.x;
@@ -142,20 +152,20 @@ function updatePlayer() {
 }
 
 // =====================
-// FOLLOWERS
+// FOLLOWERS (UNCHANGED LOGIC STYLE)
 // =====================
+function follow(obj, speed) {
+  const dx = player.x - obj.x;
+  const dy = player.y - obj.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+
+  if (d > 2) {
+    obj.x += (dx / d) * speed;
+    obj.y += (dy / d) * speed;
+  }
+}
+
 function updateFollowers() {
-  const follow = (obj, speed) => {
-    const dx = player.x - obj.x;
-    const dy = player.y - obj.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-
-    if (d > 2) {
-      obj.x += (dx / d) * speed;
-      obj.y += (dy / d) * speed;
-    }
-  };
-
   follow(holiday, 2);
   follow(stitch, 1.5);
 }
@@ -172,21 +182,21 @@ function updateCamera() {
 }
 
 // =====================
-// TRASH ANIMATION
+// TRASH UPDATE (SAFE)
 // =====================
 function updateTrash() {
   trash.forEach(t => {
     if (t.cleaned) return;
 
     t.tick++;
-    if (t.tick % 10 === 0) {
+    if (t.tick % 15 === 0) {
       t.frame = (t.frame + 1) % 16;
     }
   });
 }
 
 // =====================
-// CLEAN START
+// CLEAN SYSTEM
 // =====================
 function startClean() {
   if (cleaning) return;
@@ -202,38 +212,32 @@ function startClean() {
   }
 }
 
-// =====================
-// CLEAN STOP
-// =====================
 function stopClean() {
   cleaning = false;
   cleanProgress = 0;
   targetTrash = null;
 }
 
-// =====================
-// CLEAN UPDATE
-// =====================
 function updateClean() {
-  if (cleaning && targetTrash) {
-    cleanProgress += 2;
+  if (!cleaning || !targetTrash) return;
 
-    if (cleanProgress >= 100) {
-      targetTrash.cleaned = true;
-      score++;
+  cleanProgress += 2;
 
-      cleaning = false;
-      cleanProgress = 0;
-      targetTrash = null;
-    }
+  if (cleanProgress >= 100) {
+    targetTrash.cleaned = true;
+    score++;
+
+    cleaning = false;
+    cleanProgress = 0;
+    targetTrash = null;
   }
 }
 
 // =====================
-// BACKGROUND
+// DRAW BACKGROUND (SAFE)
 // =====================
 function drawBackground() {
-  if (!bgImg.complete) return;
+  if (!bgReady) return;
 
   ctx.drawImage(
     bgImg,
@@ -265,10 +269,10 @@ function drawMap() {
 }
 
 // =====================
-// TRASH DRAW (SAFE + VISIBLE)
+// TRASH DRAW (FIXED STABLE VERSION)
 // =====================
 function drawTrash() {
-  if (!trashImg.complete || trashImg.naturalWidth === 0) return;
+  if (!trashImg.complete) return;
 
   const cols = 4;
   const rows = 4;
@@ -279,14 +283,10 @@ function drawTrash() {
   trash.forEach(t => {
     if (t.cleaned) return;
 
-    const frame = t.frame % 16;
+    const frame = t.frame;
 
     const fx = (frame % cols) * fw;
     const fy = Math.floor(frame / cols) * fh;
-
-    // DEBUG BLUE BLOCK (ensures visibility)
-    ctx.fillStyle = "rgba(0,0,255,0.3)";
-    ctx.fillRect(t.x - camera.x, t.y - camera.y, 40, 40);
 
     ctx.drawImage(
       trashImg,
@@ -300,18 +300,24 @@ function drawTrash() {
 }
 
 // =====================
-// SIMPLE DRAW
+// SIMPLE SPRITES (RESTORED STYLE)
 // =====================
-function drawSimple(img, x, y) {
+function drawSprite(img, obj) {
   if (!img.complete) return;
 
-  ctx.drawImage(img, x - camera.x, y - camera.y, 48, 48);
+  ctx.drawImage(
+    img,
+    obj.x - camera.x,
+    obj.y - camera.y,
+    48,
+    48
+  );
 }
 
 // =====================
-// RAINBOW CLEAN BAR
+// RAINBOW BAR
 // =====================
-function drawCleanBar() {
+function drawBar() {
   if (!cleaning) return;
 
   const x = 250;
@@ -351,14 +357,13 @@ function loop() {
 
   drawTrash();
 
-  drawSimple(stitchImg, stitch.x, stitch.y);
-  drawSimple(holidayImg, holiday.x, holiday.y);
-  drawSimple(spiritImg, player.x, player.y);
+  drawSprite(stitchImg, stitch);
+  drawSprite(holidayImg, holiday);
+  drawSprite(spiritImg, player);
 
-  drawCleanBar();
+  drawBar();
 
   ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
   ctx.fillText("Score: " + score, 20, 50);
 
   requestAnimationFrame(loop);
